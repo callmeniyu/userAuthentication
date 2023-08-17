@@ -3,7 +3,7 @@ const express = require("express");
 const ejs = require('ejs');
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
 
 const app = express();
 
@@ -18,7 +18,6 @@ const userSchema =new mongoose.Schema({
     password: String
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
 
 
 const User = mongoose.model("User", userSchema);
@@ -36,24 +35,27 @@ app.get("/register", (req, res) => {
     res.render("register")
 });
 
-app.post("/register", (req, res) => {
-    const newUser = new User({
-        email: req.body.username,
-        password: req.body.password
-    })
-    newUser.save()
-        .then(() => {
-            console.log("Succesfully Saved new User")
-        })
-        .catch((err) => {
-            console.log(err);
-        })
-    res.render("secrets");
+app.post("/register", async (req, res) => {
+    try {
+        const newUser = new User({
+            email: req.body.username,
+            password: md5(req.body.password)
+        });
+
+        await newUser.save();
+        console.log("Successfully Saved new User");
+
+        res.render("secrets");
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Error occurred while saving the user.");
+    }
 });
+ 
 
 app.post("/login", (req, res) => {
     const userName = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
     User.findOne({ email: userName })
         .then((doc) => {
